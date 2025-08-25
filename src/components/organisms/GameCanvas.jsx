@@ -12,7 +12,7 @@ const GameCanvas = forwardRef(({ gameType }, ref) => {
     if (ref) {
       ref.current = canvasRef.current
     }
-  }, [ref])
+}, [ref])
 
   useEffect(() => {
     if (!canvasRef.current || !gameEngine) return
@@ -32,7 +32,7 @@ const GameCanvas = forwardRef(({ gameType }, ref) => {
     // Game loop
     let animationId
     const gameLoop = (timestamp) => {
-      if (!paused && gameRunning) {
+      if (!paused && gameRunning && gameEngine) {
         gameEngine.update(timestamp)
         gameEngine.render(ctx)
       }
@@ -47,7 +47,7 @@ const GameCanvas = forwardRef(({ gameType }, ref) => {
         cancelAnimationFrame(animationId)
       }
     }
-  }, [gameEngine, gameRunning, paused])
+  }, [gameRunning, paused])
 
   return (
     <canvas

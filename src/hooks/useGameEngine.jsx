@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from "react"
+import { useCallback, useRef, useEffect, useMemo } from "react"
 import { useGameContext } from "@/hooks/useGameContext"
 
 export function useGameEngine(canvasRef, gameType) {
@@ -429,7 +429,7 @@ export function useGameEngine(canvasRef, gameType) {
       ctx.fillRect(projectile.x, projectile.y, projectile.width, projectile.height)
     })
 
-  }, [gameType])
+}, [gameType])
 
-  return { update, render }
+  return useMemo(() => ({ update, render }), [update, render])
 }

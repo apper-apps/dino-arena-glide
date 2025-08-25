@@ -79,5 +79,20 @@
 
   .hud-element {
     @apply bg-surface/80 backdrop-blur-sm rounded-lg px-4 py-2 text-white font-semibold border border-accent/20;
+}
+
+  /* Touch controls specific styles */
+  .touch-button {
+    @apply select-none touch-manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .touch-button:active {
+    @apply transform scale-95;
+  }
+
+  /* Keyboard hints */
+  .keyboard-hint {
+    @apply text-xs text-gray-500 bg-black/20 px-2 py-1 rounded backdrop-blur-sm;
   }
 }

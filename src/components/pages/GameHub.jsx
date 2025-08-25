@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { useGameContext } from "@/hooks/useGameContext";
+import { useGameInput } from "@/hooks/useGameInput";
 import PauseMenu from "@/components/organisms/PauseMenu";
 import MainMenu from "@/components/organisms/MainMenu";
 import GameCanvas from "@/components/organisms/GameCanvas";
@@ -15,12 +16,16 @@ const GameHub = () => {
     loadGameData()
   }, [loadGameData])
 
-  const isMobile = window.innerWidth <= 768
+const { isMobile } = useGameInput()
 
   const shouldShowTouchControls = () => {
-    return isMobile && settings?.touchControls !== false
+// Check control type setting
+    if (settings.controlType === 'desktop') return false
+    if (settings.controlType === 'mobile') return true
+    
+    // Auto mode - show on mobile devices
+    return isMobile
   }
-
   return (
     <div className="game-hub w-full h-screen bg-background overflow-hidden game-ui">
       {/* Background gradient */}

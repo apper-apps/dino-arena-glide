@@ -1,9 +1,8 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { useGameInput } from "@/hooks/useGameInput";
-import { useGameContext } from "@/contexts/GameContext";
+import { useGameContext } from "@/hooks/useGameContext";
 import ApperIcon from "@/components/ApperIcon";
-
 const TouchControls = ({ gameType }) => {
   const { handleInput, isMobile } = useGameInput()
   const { settings } = useGameContext()

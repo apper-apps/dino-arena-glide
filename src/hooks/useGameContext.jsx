@@ -16,10 +16,11 @@ const INITIAL_STATE = {
   },
   unlockedSkins: ["default"],
   currentSkin: "default",
-  settings: {
+settings: {
     soundEnabled: true,
     musicEnabled: true,
-    difficulty: "normal"
+    difficulty: "normal",
+    controlType: "auto" // auto, mobile, desktop
   },
   player: {
     x: 0,

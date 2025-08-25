@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useGameContext } from "@/hooks/useGameContext";
 
 export function useGameInput() {
-  const { currentGame, gameRunning, paused, dispatch } = useGameContext()
+const { currentGame, gameRunning, paused, settings, dispatch } = useGameContext()
   const keysPressed = useRef(new Set())
 
   const handleInput = useCallback((action, pressed) => {
@@ -133,16 +133,30 @@ const handleKeyUp = useCallback((event) => {
   }, [handleInput])
 
   useEffect(() => {
-    if (!gameRunning) return
+if (!gameRunning) return
 
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
+    // Check if keyboard controls should be enabled
+    const shouldUseKeyboard = settings.controlType === 'desktop' || 
+                             (settings.controlType === 'auto' && !isMobile())
+
+    if (shouldUseKeyboard) {
+      window.addEventListener('keydown', handleKeyDown)
+      window.addEventListener('keyup', handleKeyUp)
+    }
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
+      if (shouldUseKeyboard) {
+        window.removeEventListener('keydown', handleKeyDown)
+        window.removeEventListener('keyup', handleKeyUp)
+      }
     }
-  }, [gameRunning, handleKeyDown, handleKeyUp])
+  }, [gameRunning, handleKeyDown, handleKeyUp, settings.controlType])
+
+// Helper function to detect mobile devices
+  const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
+  }
 
   return {
     handleTouchInput

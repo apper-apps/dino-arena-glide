@@ -5,7 +5,7 @@ import ApperIcon from "@/components/ApperIcon"
 import { toast } from "react-toastify"
 
 const MainMenu = () => {
-  const { highScores, coins, unlockedSkins, dispatch } = useGameContext()
+const { highScores, coins, unlockedSkins, settings, dispatch } = useGameContext()
   const [showSettings, setShowSettings] = useState(false)
 
   const startGame = (gameType) => {
@@ -166,22 +166,61 @@ const MainMenu = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="font-display text-2xl text-white mb-6">Settings</h3>
-              <div className="space-y-4">
+<div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="font-body text-white">Sound Effects</span>
-                  <button className="w-12 h-6 bg-primary rounded-full"></button>
+                  <button 
+                    onClick={() => dispatch({ type: 'UPDATE_SETTINGS', payload: { soundEnabled: !settings.soundEnabled } })}
+                    className={`w-12 h-6 rounded-full relative transition-colors ${settings.soundEnabled ? 'bg-primary' : 'bg-gray-600'}`}
+                  >
+                    <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${settings.soundEnabled ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
+                  </button>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="font-body text-white">Background Music</span>
-                  <button className="w-12 h-6 bg-primary rounded-full"></button>
+                  <button 
+                    onClick={() => dispatch({ type: 'UPDATE_SETTINGS', payload: { musicEnabled: !settings.musicEnabled } })}
+                    className={`w-12 h-6 rounded-full relative transition-colors ${settings.musicEnabled ? 'bg-primary' : 'bg-gray-600'}`}
+                  >
+                    <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${settings.musicEnabled ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
+                  </button>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="font-body text-white">Difficulty</span>
-                  <select className="bg-background text-white px-3 py-1 rounded">
-                    <option>Easy</option>
-                    <option>Normal</option>
-                    <option>Hard</option>
+                  <select 
+                    value={settings.difficulty}
+                    onChange={(e) => dispatch({ type: 'UPDATE_SETTINGS', payload: { difficulty: e.target.value } })}
+                    className="bg-background text-white px-3 py-1 rounded border border-accent/20"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="normal">Normal</option>
+                    <option value="hard">Hard</option>
                   </select>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-body text-white">Steuerung</span>
+                  <div className="flex bg-background rounded-lg border border-accent/20 overflow-hidden">
+                    <button
+                      onClick={() => dispatch({ type: 'UPDATE_SETTINGS', payload: { controlType: 'auto' } })}
+                      className={`px-3 py-1 text-sm transition-colors ${settings.controlType === 'auto' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      Auto
+                    </button>
+                    <button
+                      onClick={() => dispatch({ type: 'UPDATE_SETTINGS', payload: { controlType: 'mobile' } })}
+                      className={`px-3 py-1 text-sm flex items-center gap-1 transition-colors ${settings.controlType === 'mobile' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      <ApperIcon name="Smartphone" size={14} />
+                      Handy
+                    </button>
+                    <button
+                      onClick={() => dispatch({ type: 'UPDATE_SETTINGS', payload: { controlType: 'desktop' } })}
+                      className={`px-3 py-1 text-sm flex items-center gap-1 transition-colors ${settings.controlType === 'desktop' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      <ApperIcon name="Monitor" size={14} />
+                      PC
+                    </button>
+                  </div>
                 </div>
               </div>
               <button

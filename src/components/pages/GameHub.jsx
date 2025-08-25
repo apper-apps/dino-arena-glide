@@ -8,14 +8,18 @@ import GameHUD from "@/components/organisms/GameHUD";
 import GameOverScreen from "@/components/organisms/GameOverScreen";
 
 const GameHub = () => {
-  const { currentGame, gameRunning, paused, loadGameData } = useGameContext()
+  const { currentGame, gameRunning, paused, settings, loadGameData } = useGameContext()
   const canvasRef = useRef(null)
 
-useEffect(() => {
+  useEffect(() => {
     loadGameData()
   }, [loadGameData])
 
   const isMobile = window.innerWidth <= 768
+
+  const shouldShowTouchControls = () => {
+    return isMobile && settings?.touchControls !== false
+  }
 
   return (
     <div className="game-hub w-full h-screen bg-background overflow-hidden game-ui">
@@ -36,7 +40,7 @@ useEffect(() => {
             <GameOverScreen gameType={currentGame} />
           )}
           
-          {isMobile && gameRunning && !paused && (
+{shouldShowTouchControls() && gameRunning && !paused && (
             <TouchControls gameType={currentGame} />
           )}
         </>

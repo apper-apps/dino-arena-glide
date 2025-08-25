@@ -1,0 +1,83 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+@import 'react-toastify/dist/ReactToastify.css';
+
+@layer base {
+  html {
+    font-family: 'Outfit', sans-serif;
+  }
+  
+  body {
+    @apply bg-background text-white overflow-hidden;
+  }
+
+  canvas {
+    @apply block;
+  }
+
+  button:focus {
+    outline: none;
+  }
+
+  /* Disable text selection on game elements */
+  .game-ui {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-surface;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary rounded-full;
+  }
+}
+
+@layer components {
+  .toast-container {
+    z-index: 9999 !important;
+  }
+
+  .Toastify__toast {
+    @apply bg-surface text-white rounded-lg shadow-lg;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  .Toastify__toast--success {
+    @apply bg-success;
+  }
+
+  .Toastify__toast--error {
+    @apply bg-error;
+  }
+
+  .Toastify__toast--warning {
+    @apply bg-warning;
+  }
+
+  .Toastify__toast--info {
+    @apply bg-info;
+  }
+
+  .game-button {
+    @apply bg-gradient-to-r from-primary to-secondary text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95;
+  }
+
+  .game-button:hover {
+    @apply shadow-2xl;
+    box-shadow: 0 0 20px rgba(255, 107, 53, 0.5);
+  }
+
+  .hud-element {
+    @apply bg-surface/80 backdrop-blur-sm rounded-lg px-4 py-2 text-white font-semibold border border-accent/20;
+  }
+}

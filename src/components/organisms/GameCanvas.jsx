@@ -12,7 +12,38 @@ const GameCanvas = forwardRef(({ gameType }, ref) => {
     if (ref) {
       ref.current = canvasRef.current
     }
-}, [ref])
+// Initialize canvas and start game engine
+    const canvas = ref.current
+    if (!canvas) return
+
+    // Set canvas size to fill container
+    const resizeCanvas = () => {
+      const container = canvas.parentElement
+      if (container) {
+        canvas.width = container.clientWidth
+        canvas.height = container.clientHeight
+      }
+    }
+
+    resizeCanvas()
+    window.addEventListener('resize', resizeCanvas)
+
+    // Enable high DPI support
+    const ctx = canvas.getContext('2d')
+    const devicePixelRatio = window.devicePixelRatio || 1
+    const rect = canvas.getBoundingClientRect()
+    
+    canvas.width = rect.width * devicePixelRatio
+    canvas.height = rect.height * devicePixelRatio
+    canvas.style.width = rect.width + 'px'
+    canvas.style.height = rect.height + 'px'
+    
+    ctx.scale(devicePixelRatio, devicePixelRatio)
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas)
+    }
+  }, [ref])
 
   useEffect(() => {
     if (!canvasRef.current || !gameEngine) return

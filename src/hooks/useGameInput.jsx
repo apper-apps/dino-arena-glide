@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef } from "react"
-import { useGameContext } from "@/hooks/useGameContext"
+import { useCallback, useEffect, useRef } from "react";
+import { useGameContext } from "@/hooks/useGameContext";
 
 export function useGameInput() {
   const { currentGame, gameRunning, paused, dispatch } = useGameContext()
@@ -78,8 +78,7 @@ export function useGameInput() {
       handleInput(action, true)
     }
   }, [currentGame, handleInput, dispatch])
-
-  const handleKeyUp = useCallback((event) => {
+const handleKeyUp = useCallback((event) => {
     keysPressed.current.delete(event.code)
     
     let action = null
@@ -129,15 +128,23 @@ export function useGameInput() {
     }
   }, [currentGame, handleInput])
 
+  const handleTouchInput = useCallback((action, pressed) => {
+    handleInput(action, pressed)
+  }, [handleInput])
+
   useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown)
-    window.addEventListener("keyup", handleKeyUp)
+    if (!gameRunning) return
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown)
-      window.removeEventListener("keyup", handleKeyUp)
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [handleKeyDown, handleKeyUp])
+  }, [gameRunning, handleKeyDown, handleKeyUp])
 
-  return { handleInput }
+  return {
+    handleTouchInput
+  }
 }

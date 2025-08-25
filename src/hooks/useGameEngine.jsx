@@ -1,5 +1,5 @@
-import { useCallback, useRef, useEffect, useMemo } from "react"
-import { useGameContext } from "@/hooks/useGameContext"
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useGameContext } from "@/hooks/useGameContext";
 
 export function useGameEngine(canvasRef, gameType) {
   const {
@@ -12,35 +12,36 @@ export function useGameEngine(canvasRef, gameType) {
     dispatch
   } = useGameContext()
 
+  const animationRef = useRef(null)
+  const lastTimeRef = useRef(0)
   const gameState = useRef({
-    lastTime: 0,
-    gameSpeed: 1,
-    scrollOffset: 0,
+    initialized: false,
     inputState: {},
-    particles: [],
-    camera: { x: 0, y: 0 }
-  })
-
-  const entities = useRef({
-    player: {
-      x: 100,
-      y: 300,
-      width: 40,
-      height: 40,
-      velocityY: 0,
-      grounded: false,
-      jumping: false,
-      ducking: false,
-      health: 100,
-      maxHealth: 100
+    entities: {
+      player: {
+        x: 100,
+        y: 300,
+        width: 40,
+        height: 40,
+        velocityY: 0,
+        velocityX: 0,
+        onGround: true,
+        health: 100,
+        maxHealth: 100,
+        speed: 5,
+        jumpPower: 15,
+        color: "#FF6B35"
+      }
     },
     obstacles: [],
     enemies: [],
     collectibles: [],
-    projectiles: []
+    projectiles: [],
+    particles: [],
+    camera: { x: 0, y: 0 },
+    background: { x: 0 }
   })
 
-  // Input handling
   useEffect(() => {
     const handleInput = (event) => {
       if (event.type === "HANDLE_INPUT") {
@@ -53,383 +54,500 @@ export function useGameEngine(canvasRef, gameType) {
     return unsubscribe
   }, [])
 
-  const spawnObstacle = useCallback(() => {
-    if (!canvasRef.current) return
+  // Initialize game
+  const initGame = useCallback(() => {
+    if (!gameRunning) return
 
-    const canvas = canvasRef.current
-    const obstacle = {
-      id: Date.now(),
-      x: canvas.width,
-      y: Math.random() > 0.5 ? 300 : 350, // Ground or elevated
-      width: 30 + Math.random() * 20,
-      height: 30 + Math.random() * 40,
-      type: Math.random() > 0.7 ? "spike" : "rock",
-      speed: 3 + level * 0.5
-    }
-
-    entities.current.obstacles.push(obstacle)
-  }, [level])
-
-  const spawnEnemy = useCallback(() => {
-    if (!canvasRef.current) return
-
-    const canvas = canvasRef.current
-    const enemy = {
-      id: Date.now(),
-      x: canvas.width,
-      y: 200 + Math.random() * 200,
-      width: 35,
-      height: 35,
-      health: 50 + level * 10,
-      maxHealth: 50 + level * 10,
-      speed: 1 + Math.random() * 2,
-      type: Math.random() > 0.5 ? "flyer" : "walker",
-      ai: {
-        state: "patrol",
-        lastAction: 0,
-        direction: -1
-      }
-    }
-
-    entities.current.enemies.push(enemy)
-  }, [level])
-
-  const spawnCollectible = useCallback(() => {
-    if (!canvasRef.current) return
-
-    const canvas = canvasRef.current
-    const collectible = {
-      id: Date.now(),
-      x: canvas.width,
-      y: 200 + Math.random() * 200,
-      width: 20,
-      height: 20,
-      type: Math.random() > 0.8 ? "powerup" : "coin",
-      value: Math.random() > 0.8 ? 50 : 10,
-      bounce: 0
-    }
-
-    entities.current.collectibles.push(collectible)
-  }, [])
-
-  const updatePhysics = useCallback((deltaTime) => {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const gravity = 800
+    // Reset game state
+    gameState.current.entities.player = {
+      x: 100,
+      y: canvas.height - 140,
+      width: 40,
+      height: 40,
+      velocityY: 0,
+      velocityX: 0,
+      onGround: true,
+      health: 100,
+      maxHealth: 100,
+      speed: gameType === "combat" ? 8 : 5,
+      jumpPower: gameType === "runner" ? 15 : 12,
+      color: "#FF6B35"
+    }
+
+    gameState.current.obstacles = []
+    gameState.current.enemies = []
+    gameState.current.collectibles = []
+    gameState.current.projectiles = []
+    gameState.current.particles = []
+    gameState.current.camera = { x: 0, y: 0 }
+    gameState.current.background = { x: 0 }
+    gameState.current.initialized = true
+
+    dispatch({ type: "UPDATE_PLAYER", payload: gameState.current.entities.player })
+  }, [gameRunning, gameType, dispatch, canvasRef])
+
+  // Spawn obstacles
+  const spawnObstacle = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const obstacle = {
+      id: Date.now() + Math.random(),
+      x: canvas.width + 50,
+      y: gameType === "runner" ? canvas.height - 140 : Math.random() * (canvas.height - 200) + 100,
+      width: 30 + Math.random() * 20,
+      height: 30 + Math.random() * 20,
+      speed: 3 + level * 0.5,
+      color: "#E74C3C"
+    }
+
+    gameState.current.obstacles.push(obstacle)
+  }, [gameType, level, canvasRef])
+
+  // Spawn collectibles
+  const spawnCollectible = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const collectible = {
+      id: Date.now() + Math.random(),
+      x: canvas.width + 50,
+      y: Math.random() * (canvas.height - 200) + 100,
+      width: 20,
+      height: 20,
+      speed: 2 + level * 0.3,
+      type: Math.random() > 0.7 ? "coin" : "powerup",
+      color: "#F7931E",
+      rotation: 0
+    }
+
+    gameState.current.collectibles.push(collectible)
+  }, [level, canvasRef])
+
+  // Spawn enemies (combat mode)
+  const spawnEnemy = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas || gameType !== "combat") return
+
+    const enemy = {
+      id: Date.now() + Math.random(),
+      x: canvas.width + 50,
+      y: Math.random() * (canvas.height - 200) + 100,
+      width: 35,
+      height: 35,
+      speed: 2 + level * 0.4,
+      health: 50,
+      color: "#8E44AD",
+      lastAttack: 0
+    }
+
+    gameState.current.enemies.push(enemy)
+  }, [gameType, level, canvasRef])
+
+  // Create particle
+  const createParticle = useCallback((x, y, color = "#FF6B35", count = 5) => {
+    for (let i = 0; i < count; i++) {
+      gameState.current.particles.push({
+        x,
+        y,
+        velocityX: (Math.random() - 0.5) * 8,
+        velocityY: (Math.random() - 0.5) * 8 - 2,
+        life: 1,
+        decay: 0.02,
+        color,
+        size: Math.random() * 4 + 2
+      })
+    }
+  }, [])
+
+  // Update game entities
+  const updateEntities = useCallback((deltaTime) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const entities = gameState.current.entities
+    const player = entities.player
     const groundY = canvas.height - 100
 
     // Update player physics
     if (gameType === "runner") {
-      // Jumping
-      if (gameState.current.inputState.jump && entities.current.player.grounded) {
-        entities.current.player.velocityY = -400
-        entities.current.player.grounded = false
-        entities.current.player.jumping = true
+      // Jump logic
+      if (gameState.current.inputState.jump && player.onGround) {
+        player.velocityY = -player.jumpPower
+        player.onGround = false
+        createParticle(player.x, player.y + player.height, "#00D9FF", 3)
       }
 
-      // Apply gravity
-      if (!entities.current.player.grounded) {
-        entities.current.player.velocityY += gravity * deltaTime
+      // Duck logic
+      if (gameState.current.inputState.duck && player.onGround) {
+        player.height = 20
+        player.y = groundY - player.height
+      } else if (!gameState.current.inputState.duck) {
+        player.height = 40
+        if (player.onGround) player.y = groundY - player.height
       }
 
-      // Update position
-      entities.current.player.y += entities.current.player.velocityY * deltaTime
+      // Gravity
+      player.velocityY += 0.8
+      player.y += player.velocityY
 
       // Ground collision
-      if (entities.current.player.y >= groundY - entities.current.player.height) {
-        entities.current.player.y = groundY - entities.current.player.height
-        entities.current.player.velocityY = 0
-        entities.current.player.grounded = true
-        entities.current.player.jumping = false
+      if (player.y + player.height >= groundY) {
+        player.y = groundY - player.height
+        player.velocityY = 0
+        player.onGround = true
       }
-
-      // Ducking
-      entities.current.player.ducking = gameState.current.inputState.duck
-      entities.current.player.height = entities.current.player.ducking ? 20 : 40
-
     } else if (gameType === "combat") {
       // Combat movement
-      const moveSpeed = 200
+      const moveSpeed = player.speed
       
-      if (gameState.current.inputState.up) {
-        entities.current.player.y = Math.max(50, entities.current.player.y - moveSpeed * deltaTime)
-      }
-      if (gameState.current.inputState.down) {
-        entities.current.player.y = Math.min(canvas.height - 100, entities.current.player.y + moveSpeed * deltaTime)
-      }
-      if (gameState.current.inputState.left) {
-        entities.current.player.x = Math.max(20, entities.current.player.x - moveSpeed * deltaTime)
-      }
-      if (gameState.current.inputState.right) {
-        entities.current.player.x = Math.min(canvas.width - 100, entities.current.player.x + moveSpeed * deltaTime)
-      }
+      if (gameState.current.inputState.up) player.velocityY = -moveSpeed
+      else if (gameState.current.inputState.down) player.velocityY = moveSpeed
+      else player.velocityY *= 0.8
 
-      // Attacking
-      if (gameState.current.inputState.attack) {
-        // Create projectile or melee attack
-        if (Math.random() > 0.9) { // Rate limit
-          entities.current.projectiles.push({
-            id: Date.now(),
-            x: entities.current.player.x + 40,
-            y: entities.current.player.y + 20,
-            width: 8,
-            height: 8,
-            velocityX: 300,
-            velocityY: 0,
-            damage: 25,
-            lifetime: 2000
-          })
-        }
-      }
+      if (gameState.current.inputState.left) player.velocityX = -moveSpeed
+      else if (gameState.current.inputState.right) player.velocityX = moveSpeed
+      else player.velocityX *= 0.8
+
+      player.x += player.velocityX
+      player.y += player.velocityY
+
+      // Boundary checks
+      player.x = Math.max(0, Math.min(canvas.width - player.width, player.x))
+      player.y = Math.max(0, Math.min(canvas.height - player.height, player.y))
     }
 
-    // Update game objects
-    gameState.current.scrollOffset += (2 + level * 0.5) * deltaTime
-
     // Update obstacles
-    entities.current.obstacles = entities.current.obstacles.filter(obstacle => {
-      if (gameType === "runner") {
-        obstacle.x -= obstacle.speed
-      }
+    gameState.current.obstacles = gameState.current.obstacles.filter(obstacle => {
+      obstacle.x -= obstacle.speed
       return obstacle.x + obstacle.width > -50
     })
 
-    // Update enemies
-    entities.current.enemies = entities.current.enemies.filter(enemy => {
-      if (gameType === "runner") {
-        enemy.x -= 2 + level * 0.3
-      } else {
-        // AI behavior
-        const now = Date.now()
-        if (now - enemy.ai.lastAction > 1000) {
-          enemy.ai.lastAction = now
-          if (Math.random() > 0.5) {
-            enemy.ai.direction *= -1
-          }
-        }
-        enemy.x += enemy.ai.direction * enemy.speed
-        enemy.y += Math.sin(now * 0.003) * 0.5
-      }
-      return enemy.x + enemy.width > -50 && enemy.health > 0
-    })
-
     // Update collectibles
-    entities.current.collectibles = entities.current.collectibles.filter(collectible => {
-      if (gameType === "runner") {
-        collectible.x -= 3
-      }
-      collectible.bounce += deltaTime * 5
-      collectible.y += Math.sin(collectible.bounce) * 0.5
+    gameState.current.collectibles = gameState.current.collectibles.filter(collectible => {
+      collectible.x -= collectible.speed
+      collectible.rotation += 0.1
       return collectible.x + collectible.width > -50
     })
 
-    // Update projectiles
-    entities.current.projectiles = entities.current.projectiles.filter(projectile => {
-      projectile.x += projectile.velocityX * deltaTime
-      projectile.y += projectile.velocityY * deltaTime
-      projectile.lifetime -= deltaTime * 1000
-      return projectile.lifetime > 0 && projectile.x < canvas.width + 50
+    // Update enemies
+    gameState.current.enemies = gameState.current.enemies.filter(enemy => {
+      enemy.x -= enemy.speed
+      
+      // Simple AI - move towards player
+      if (gameType === "combat") {
+        const dx = player.x - enemy.x
+        const dy = player.y - enemy.y
+        const distance = Math.sqrt(dx * dx + dy * dy)
+        
+        if (distance < 200) {
+          enemy.x += (dx / distance) * 0.5
+          enemy.y += (dy / distance) * 0.5
+        }
+      }
+      
+      return enemy.x + enemy.width > -50
     })
+
+    // Update particles
+    gameState.current.particles = gameState.current.particles.filter(particle => {
+      particle.x += particle.velocityX
+      particle.y += particle.velocityY
+      particle.velocityY += 0.3 // gravity
+      particle.life -= particle.decay
+      return particle.life > 0
+    })
+
+    // Update background
+    if (gameType === "runner") {
+      gameState.current.background.x -= 2
+      if (gameState.current.background.x <= -canvas.width) {
+        gameState.current.background.x = 0
+      }
+    }
 
     // Spawn new entities
     if (Math.random() > 0.995) spawnObstacle()
-    if (Math.random() > 0.998) spawnCollectible()
+    if (Math.random() > 0.997) spawnCollectible()
     if (gameType === "combat" && Math.random() > 0.997) spawnEnemy()
+  }, [gameType, spawnObstacle, spawnCollectible, spawnEnemy, createParticle, canvasRef])
 
-  }, [gameType, level, spawnObstacle, spawnCollectible, spawnEnemy])
-
+  // Collision detection
   const checkCollisions = useCallback(() => {
-    const playerRect = {
-      x: entities.current.player.x,
-      y: entities.current.player.y,
-      width: entities.current.player.width,
-      height: entities.current.player.height
-    }
+    const player = gameState.current.entities.player
 
     // Check obstacle collisions
-    entities.current.obstacles.forEach(obstacle => {
-      if (isColliding(playerRect, obstacle)) {
-        dispatch({ type: "UPDATE_PLAYER", payload: { health: Math.max(0, entities.current.player.health - 20) } })
-        // Remove obstacle on hit
-        entities.current.obstacles = entities.current.obstacles.filter(o => o.id !== obstacle.id)
+    gameState.current.obstacles.forEach(obstacle => {
+      if (player.x < obstacle.x + obstacle.width &&
+          player.x + player.width > obstacle.x &&
+          player.y < obstacle.y + obstacle.height &&
+          player.y + player.height > obstacle.y) {
         
-        if (entities.current.player.health <= 0) {
-          dispatch({ type: "END_GAME", gameType })
-        }
-      }
-    })
-
-    // Check enemy collisions
-    entities.current.enemies.forEach(enemy => {
-      if (isColliding(playerRect, enemy)) {
-        if (gameType === "combat") {
-          dispatch({ type: "UPDATE_PLAYER", payload: { health: Math.max(0, entities.current.player.health - 10) } })
-        } else {
+        createParticle(obstacle.x, obstacle.y, "#E74C3C", 8)
+        dispatch({ type: "UPDATE_PLAYER", payload: { health: Math.max(0, player.health - 20) } })
+        // Remove obstacle on hit
+        gameState.current.obstacles = gameState.current.obstacles.filter(o => o.id !== obstacle.id)
+        
+        if (gameType === "runner") {
           dispatch({ type: "END_GAME", gameType })
         }
       }
     })
 
     // Check collectible collisions
-    entities.current.collectibles = entities.current.collectibles.filter(collectible => {
-      if (isColliding(playerRect, collectible)) {
-        dispatch({ type: "UPDATE_COINS", payload: collectible.value })
-        dispatch({ type: "UPDATE_SCORE", payload: collectible.value * 10 })
-        return false
-      }
-      return true
-    })
-
-    // Check projectile-enemy collisions
-    entities.current.projectiles.forEach(projectile => {
-      entities.current.enemies.forEach(enemy => {
-        if (isColliding(projectile, enemy)) {
-          enemy.health -= projectile.damage
-          entities.current.projectiles = entities.current.projectiles.filter(p => p.id !== projectile.id)
-          
-          if (enemy.health <= 0) {
-            dispatch({ type: "UPDATE_SCORE", payload: 100 })
-            dispatch({ type: "UPDATE_COINS", payload: 5 })
-          }
+    gameState.current.collectibles.forEach(collectible => {
+      if (player.x < collectible.x + collectible.width &&
+          player.x + player.width > collectible.x &&
+          player.y < collectible.y + collectible.height &&
+          player.y + player.height > collectible.y) {
+        
+        createParticle(collectible.x, collectible.y, collectible.color, 6)
+        
+        if (collectible.type === "coin") {
+          dispatch({ type: "UPDATE_SCORE", payload: 100 })
+          dispatch({ type: "UPDATE_COINS", payload: 1 })
+        } else {
+          dispatch({ type: "UPDATE_SCORE", payload: 200 })
         }
-      })
+        
+        gameState.current.collectibles = gameState.current.collectibles.filter(c => c.id !== collectible.id)
+      }
     })
 
-  }, [gameType, dispatch])
+    // Check enemy collisions
+    gameState.current.enemies.forEach(enemy => {
+      if (player.x < enemy.x + enemy.width &&
+          player.x + player.width > enemy.x &&
+          player.y < enemy.y + enemy.height &&
+          player.y + player.height > enemy.y) {
+        
+        createParticle(enemy.x, enemy.y, enemy.color, 6)
+        
+        if (gameType === "combat") {
+          dispatch({ type: "UPDATE_PLAYER", payload: { health: Math.max(0, player.health - 10) } })
+        } else {
+          dispatch({ type: "END_GAME", gameType })
+        }
+        
+        gameState.current.enemies = gameState.current.enemies.filter(e => e.id !== enemy.id)
+      }
+    })
+  }, [gameType, dispatch, createParticle])
 
-  const isColliding = (rect1, rect2) => {
-    return rect1.x < rect2.x + rect2.width &&
-           rect1.x + rect1.width > rect2.x &&
-           rect1.y < rect2.y + rect2.height &&
-           rect1.y + rect1.height > rect2.y
-  }
-
-  const update = useCallback((timestamp) => {
-    if (!gameRunning || paused) return
-
-    const deltaTime = Math.min((timestamp - gameState.current.lastTime) / 1000, 0.016)
-    gameState.current.lastTime = timestamp
-
-    updatePhysics(deltaTime)
-    checkCollisions()
-
-    // Update score over time
-    if (gameType === "runner") {
-      dispatch({ type: "UPDATE_SCORE", payload: Math.floor(deltaTime * 10) })
-    }
-
-  }, [gameRunning, paused, updatePhysics, checkCollisions, gameType, dispatch])
-
-  const render = useCallback((ctx) => {
-    if (!ctx || !canvasRef.current) return
-
+  // Render game
+  const render = useCallback(() => {
     const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // Background gradient
+    // Draw background gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height)
-    if (gameType === "runner") {
-      gradient.addColorStop(0, "#87CEEB")
-      gradient.addColorStop(0.7, "#98FB98")
-      gradient.addColorStop(1, "#90EE90")
-    } else {
-      gradient.addColorStop(0, "#1A252F")
-      gradient.addColorStop(0.5, "#2C3E50")
-      gradient.addColorStop(1, "#34495E")
-    }
+    gradient.addColorStop(0, '#1A252F')
+    gradient.addColorStop(0.5, '#2C3E50')
+    gradient.addColorStop(1, '#1A252F')
     ctx.fillStyle = gradient
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // Ground
-    if (gameType === "runner") {
-      ctx.fillStyle = "#8B4513"
-      ctx.fillRect(0, canvas.height - 100, canvas.width, 100)
+    // Draw animated background elements
+    ctx.fillStyle = 'rgba(255, 107, 53, 0.1)'
+    for (let i = 0; i < 5; i++) {
+      const x = (gameState.current.background.x + i * 200) % (canvas.width + 100)
+      const y = 50 + Math.sin(Date.now() * 0.001 + i) * 20
+      ctx.beginPath()
+      ctx.arc(x, y, 20, 0, Math.PI * 2)
+      ctx.fill()
     }
 
-    // Render player
-    ctx.fillStyle = "#FF6B35"
-    ctx.fillRect(
-      entities.current.player.x,
-      entities.current.player.y,
-      entities.current.player.width,
-      entities.current.player.height
+    // Ground
+    if (gameType === "runner") {
+      const groundGradient = ctx.createLinearGradient(0, canvas.height - 100, 0, canvas.height)
+      groundGradient.addColorStop(0, '#8B4513')
+      groundGradient.addColorStop(1, '#654321')
+      ctx.fillStyle = groundGradient
+      ctx.fillRect(0, canvas.height - 100, canvas.width, 100)
+      
+      // Ground details
+      ctx.fillStyle = 'rgba(139, 69, 19, 0.5)'
+      for (let i = 0; i < canvas.width; i += 50) {
+        const x = (i + gameState.current.background.x) % canvas.width
+        ctx.fillRect(x, canvas.height - 90, 30, 5)
+      }
+    }
+
+    // Draw player with enhanced visuals
+    const player = gameState.current.entities.player
+    ctx.save()
+    
+    // Player shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
+    ctx.fillRect(player.x + 5, player.y + player.height + 5, player.width, 8)
+    
+    // Player body with gradient
+    const playerGradient = ctx.createRadialGradient(
+      player.x + player.width/2, player.y + player.height/2, 0,
+      player.x + player.width/2, player.y + player.height/2, player.width/2
     )
-
+    playerGradient.addColorStop(0, player.color)
+    playerGradient.addColorStop(1, '#CC5429')
+    
+    ctx.fillStyle = playerGradient
+    ctx.fillRect(player.x, player.y, player.width, player.height)
+    
     // Player details
-    ctx.fillStyle = "#FFFFFF"
-    ctx.fillRect(entities.current.player.x + 5, entities.current.player.y + 5, 6, 6) // Eye
-    ctx.fillRect(entities.current.player.x + 15, entities.current.player.y + 5, 6, 6) // Eye
+    ctx.fillStyle = 'white'
+    ctx.fillRect(player.x + 8, player.y + 8, 8, 8) // eye
+    ctx.fillStyle = 'black'
+    ctx.fillRect(player.x + 10, player.y + 10, 4, 4) // pupil
+    
+    ctx.restore()
 
-    // Render obstacles
-    ctx.fillStyle = "#8B4513"
-    entities.current.obstacles.forEach(obstacle => {
+    // Draw obstacles with enhanced visuals
+    gameState.current.obstacles.forEach(obstacle => {
+      ctx.save()
+      
+      // Obstacle shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
+      ctx.fillRect(obstacle.x + 3, obstacle.y + obstacle.height + 3, obstacle.width, 6)
+      
+      // Obstacle with gradient
+      const obstacleGradient = ctx.createRadialGradient(
+        obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/2, 0,
+        obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/2, obstacle.width/2
+      )
+      obstacleGradient.addColorStop(0, obstacle.color)
+      obstacleGradient.addColorStop(1, '#C0392B')
+      
+      ctx.fillStyle = obstacleGradient
       ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height)
       
-      if (obstacle.type === "spike") {
-        ctx.fillStyle = "#FF4444"
-        ctx.beginPath()
-        ctx.moveTo(obstacle.x, obstacle.y + obstacle.height)
-        ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y)
-        ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height)
-        ctx.fill()
-        ctx.fillStyle = "#8B4513"
-      }
+      ctx.restore()
     })
 
-    // Render enemies
-    ctx.fillStyle = "#FF4444"
-    entities.current.enemies.forEach(enemy => {
-      ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height)
+    // Draw collectibles with rotation and glow
+    gameState.current.collectibles.forEach(collectible => {
+      ctx.save()
+      ctx.translate(collectible.x + collectible.width/2, collectible.y + collectible.height/2)
+      ctx.rotate(collectible.rotation)
       
-      // Health bar
-      if (gameType === "combat") {
-        const healthPercent = enemy.health / enemy.maxHealth
-        ctx.fillStyle = "#FF0000"
-        ctx.fillRect(enemy.x, enemy.y - 10, enemy.width, 4)
-        ctx.fillStyle = "#00FF00"
-        ctx.fillRect(enemy.x, enemy.y - 10, enemy.width * healthPercent, 4)
-        ctx.fillStyle = "#FF4444"
+      // Glow effect
+      ctx.shadowColor = collectible.color
+      ctx.shadowBlur = 15
+      
+      ctx.fillStyle = collectible.color
+      ctx.fillRect(-collectible.width/2, -collectible.height/2, collectible.width, collectible.height)
+      
+      // Inner shine
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
+      ctx.fillRect(-collectible.width/4, -collectible.height/4, collectible.width/2, collectible.height/2)
+      
+      ctx.restore()
+    })
+
+    // Draw enemies
+    gameState.current.enemies.forEach(enemy => {
+      ctx.save()
+      
+      // Enemy shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
+      ctx.fillRect(enemy.x + 3, enemy.y + enemy.height + 3, enemy.width, 6)
+      
+      // Enemy with pulsing effect
+      const pulse = Math.sin(Date.now() * 0.005) * 0.1 + 1
+      const enemyGradient = ctx.createRadialGradient(
+        enemy.x + enemy.width/2, enemy.y + enemy.height/2, 0,
+        enemy.x + enemy.width/2, enemy.y + enemy.height/2, (enemy.width/2) * pulse
+      )
+      enemyGradient.addColorStop(0, enemy.color)
+      enemyGradient.addColorStop(1, '#6C3483')
+      
+      ctx.fillStyle = enemyGradient
+      ctx.fillRect(enemy.x, enemy.y, enemy.width * pulse, enemy.height * pulse)
+      
+      ctx.restore()
+    })
+
+    // Draw particles
+    gameState.current.particles.forEach(particle => {
+      ctx.save()
+      ctx.globalAlpha = particle.life
+      ctx.fillStyle = particle.color
+      ctx.beginPath()
+      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+    })
+
+    // Draw UI overlays
+    if (gameType === "combat" && player.health < player.maxHealth) {
+      // Damage overlay
+      const damageAlpha = 1 - (player.health / player.maxHealth)
+      ctx.fillStyle = `rgba(231, 76, 60, ${damageAlpha * 0.3})`
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+    }
+  }, [gameType, canvasRef])
+
+  // Main game loop
+  const gameLoop = useCallback((currentTime) => {
+    if (!gameRunning || paused) {
+      animationRef.current = requestAnimationFrame(gameLoop)
+      return
+    }
+
+    const deltaTime = currentTime - lastTimeRef.current
+    lastTimeRef.current = currentTime
+
+    // Initialize if needed
+    if (!gameState.current.initialized) {
+      initGame()
+    }
+
+    // Update game state
+    updateEntities(deltaTime)
+    checkCollisions()
+
+    // Render frame
+    render()
+
+    // Continue loop
+    animationRef.current = requestAnimationFrame(gameLoop)
+  }, [gameRunning, paused, initGame, updateEntities, checkCollisions, render])
+
+  // Start/stop game loop
+  useEffect(() => {
+    if (gameRunning && !paused) {
+      lastTimeRef.current = performance.now()
+      animationRef.current = requestAnimationFrame(gameLoop)
+    } else {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
       }
-    })
+    }
 
-    // Render collectibles
-    entities.current.collectibles.forEach(collectible => {
-      if (collectible.type === "coin") {
-        ctx.fillStyle = "#F7931E"
-        ctx.beginPath()
-        ctx.arc(
-          collectible.x + collectible.width / 2,
-          collectible.y + collectible.height / 2,
-          collectible.width / 2,
-          0,
-          Math.PI * 2
-        )
-        ctx.fill()
-        
-        ctx.fillStyle = "#FFD700"
-        ctx.beginPath()
-        ctx.arc(
-          collectible.x + collectible.width / 2,
-          collectible.y + collectible.height / 2,
-          collectible.width / 4,
-          0,
-          Math.PI * 2
-        )
-        ctx.fill()
-      } else {
-        ctx.fillStyle = "#00D9FF"
-        ctx.fillRect(collectible.x, collectible.y, collectible.width, collectible.height)
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
       }
-    })
+    }
+  }, [gameRunning, paused, gameLoop])
 
-    // Render projectiles
-    ctx.fillStyle = "#FFFF00"
-    entities.current.projectiles.forEach(projectile => {
-      ctx.fillRect(projectile.x, projectile.y, projectile.width, projectile.height)
-    })
+  // Initialize when game starts
+  useEffect(() => {
+    if (gameRunning) {
+      initGame()
+    }
+  }, [gameRunning, initGame])
 
-}, [gameType])
+  const update = useCallback(() => {
+    // This is now handled by the game loop
+  }, [])
 
-  return useMemo(() => ({ update, render }), [update, render])
+return useMemo(() => ({ update, render }), [update, render])
 }

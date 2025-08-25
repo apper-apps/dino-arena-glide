@@ -128,7 +128,7 @@ function gameReducer(state, action) {
 export function GameProvider({ children }) {
   const [state, dispatch] = useReducer(gameReducer, INITIAL_STATE)
 
-  const saveGameData = useCallback(() => {
+const saveGameData = useCallback(() => {
     const dataToSave = {
       highScores: state.highScores,
       unlockedSkins: state.unlockedSkins,
@@ -137,7 +137,7 @@ export function GameProvider({ children }) {
       settings: state.settings
     }
     localStorage.setItem("dinoArenaData", JSON.stringify(dataToSave))
-  }, [state])
+  }, [state.highScores, state.unlockedSkins, state.currentSkin, state.coins, state.settings])
 
   const loadGameData = useCallback(() => {
     try {

@@ -1,17 +1,17 @@
-import React, { useEffect, useRef } from "react"
-import { useGameContext } from "@/hooks/useGameContext"
-import MainMenu from "@/components/organisms/MainMenu"
-import GameCanvas from "@/components/organisms/GameCanvas"
-import GameHUD from "@/components/organisms/GameHUD"
-import PauseMenu from "@/components/organisms/PauseMenu"
-import GameOverScreen from "@/components/organisms/GameOverScreen"
-import TouchControls from "@/components/organisms/TouchControls"
+import React, { useEffect, useRef } from "react";
+import { useGameContext } from "@/hooks/useGameContext";
+import PauseMenu from "@/components/organisms/PauseMenu";
+import MainMenu from "@/components/organisms/MainMenu";
+import GameCanvas from "@/components/organisms/GameCanvas";
+import TouchControls from "@/components/organisms/TouchControls";
+import GameHUD from "@/components/organisms/GameHUD";
+import GameOverScreen from "@/components/organisms/GameOverScreen";
 
 const GameHub = () => {
   const { currentGame, gameRunning, paused, loadGameData } = useGameContext()
   const canvasRef = useRef(null)
 
-  useEffect(() => {
+useEffect(() => {
     loadGameData()
   }, [loadGameData])
 
